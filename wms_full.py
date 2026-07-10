@@ -12,7 +12,7 @@ app.secret_key = os.urandom(24)
 
 FEISHU_APP_ID = os.environ.get('FEISHU_APP_ID', '')
 FEISHU_APP_SECRET = os.environ.get('FEISHU_APP_SECRET', '')
-APP_TOKEN = os.environ.get('FEISHU_APP_TOKEN', 'G4Yib2KCIaLHt3sa4mVcNMpSnig')
+APP_TOKEN = os.environ.get('FEISHU_APP_TOKEN', 'JajpbgTYPaABHwscQt6cc8FBnhd')
 PORT = int(os.environ.get('PORT', 10000))
 
 TABLES = {
@@ -118,8 +118,14 @@ def token_check():
 
 @app.route('/api/<table_name>')
 def api_list(table_name):
-    if table_name not in TABLES: return jsonify({'error': 'Unknown table'}), 404
-    table_id = TABLES[table_name]
+    # Case-insensitive table name lookup
+    real_name = None
+    for k in TABLES:
+        if k.lower() == table_name.lower():
+            real_name = k
+            break
+    if not real_name: return jsonify({'error': 'Unknown table'}), 404
+    table_id = TABLES[real_name]
     page = int(request.args.get('page', 1))
     page_size = int(request.args.get('page_size', 20))
     search = request.args.get('search', '').strip()
@@ -142,7 +148,12 @@ def api_list(table_name):
 
 @app.route('/api/<table_name>', methods=['POST'])
 def api_create(table_name):
-    if table_name not in TABLES: return jsonify({'error': 'Unknown table'}), 404
+    real_name = None
+    for k in TABLES:
+        if k.lower() == table_name.lower():
+            real_name = k
+            break
+    if not real_name: return jsonify({'error': 'Unknown table'}), 404
     data = request.get_json()
     if not data: return jsonify({'error': 'No data'}), 400
     result = bitable_create(TABLES[table_name], data)
@@ -151,7 +162,12 @@ def api_create(table_name):
 
 @app.route('/api/<table_name>/<record_id>', methods=['PUT'])
 def api_update(table_name, record_id):
-    if table_name not in TABLES: return jsonify({'error': 'Unknown table'}), 404
+    real_name = None
+    for k in TABLES:
+        if k.lower() == table_name.lower():
+            real_name = k
+            break
+    if not real_name: return jsonify({'error': 'Unknown table'}), 404
     data = request.get_json()
     if not data: return jsonify({'error': 'No data'}), 400
     result = bitable_update(TABLES[table_name], record_id, data)
@@ -160,7 +176,12 @@ def api_update(table_name, record_id):
 
 @app.route('/api/<table_name>/<record_id>', methods=['DELETE'])
 def api_delete(table_name, record_id):
-    if table_name not in TABLES: return jsonify({'error': 'Unknown table'}), 404
+    real_name = None
+    for k in TABLES:
+        if k.lower() == table_name.lower():
+            real_name = k
+            break
+    if not real_name: return jsonify({'error': 'Unknown table'}), 404
     result = bitable_delete(TABLES[table_name], record_id)
     if result.get('code') != 0: return jsonify({'error': result.get('msg')}), 500
     return jsonify({'ok': True})
@@ -258,7 +279,8 @@ def dashboard_stats():
     ts, ta, dd = 0, 0, {}
     for sr in stock_records:
         sf = sr.get('fields', {})
-        q, a = sf.get('Stock Qty',0) or 0, sf.get('Available Qty',0) or 0
+        q = float(sf.get('Stock Qty',0) or 0)
+        a = float(sf.get('Available Qty',0) or 0)
         d = sf.get('Material Department','Unknown') or 'Unknown'
         ts += q; ta += a; dd[d] = dd.get(d,0) + q
     stats['total_stock'] = ts; stats['total_available'] = ta; stats['dept_distribution'] = dd
